@@ -3,322 +3,333 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Complex Snake Game</title>
+<title>Complex Tic Tac Toe</title>
 <style>
   body {
     margin: 0;
-    background: #000;
-    font-family: Arial, sans-serif;
-    overflow: hidden;
+    background: linear-gradient(135deg, #222, #555);
+    font-family: 'Arial', sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: start;
+    height: 100vh;
+    color: #fff;
   }
-  #gameCanvas {
-    border: 4px solid #fff;
-    display: block;
+
+  h1 {
     margin-top: 20px;
   }
-  #uiOverlay {
-    position: absolute;
-    top: 0;
-    width: 100%;
-    height: 100%;
+
+  #gameContainer {
+    margin-top: 30px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    pointer-events: none;
   }
-  #menu, #pauseScreen, #gameOverScreen {
-    background: rgba(0,0,0,0.8);
-    padding: 20px;
-    border-radius: 10px;
-    color: #fff;
-    font-size: 24px;
-    text-align: center;
-    pointer-events: auto;
+
+  /* Canvas for game */
+  #gameCanvas {
+    background: #111;
+    border: 8px solid #4CAF50;
+    border-radius: 12px;
+    box-shadow: 0 0 20px #4CAF50 inset;
   }
+
+  /* Controls & info */
+  #controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
   button {
-    margin-top: 10px;
-    padding: 10px 20px;
-    font-size: 20px;
+    padding: 12px 24px;
+    font-size: 1.2em;
+    border: none;
+    border-radius: 8px;
+    background-color: #4CAF50;
+    color: white;
     cursor: pointer;
+    transition: background-color 0.3s;
   }
+
+  button:hover {
+    background-color: #45a049;
+  }
+
+  /* Theme selector */
+  #themeSelector {
+    padding: 10px;
+    font-size: 1em;
+  }
+
+  /* Info display */
+  #status {
+    margin-top: 20px;
+    font-size: 1.4em;
+  }
+
+  /* Additional UI for stats, leaderboard, etc., can be added here */
+
 </style>
 </head>
 <body>
 
-<!-- Canvas for game rendering -->
-<canvas id="gameCanvas" width="800" height="600"></canvas>
-
-<!-- UI overlays for menus, game over, pause -->
-<div id="uiOverlay">
-  <div id="menu">
-    <h2>Snake Game</h2>
-    <button id="startBtn">Start Game</button>
-    <button id="settingsBtn">Settings</button>
-  </div>
-  <div id="pauseScreen" style="display:none;">
-    <h2>Paused</h2>
-    <button id="resumeBtn">Resume</button>
-    <button id="mainMenuBtn">Main Menu</button>
-  </div>
-  <div id="gameOverScreen" style="display:none;">
-    <h2>Game Over</h2>
-    <p id="finalScore"></p>
+<h1>Ultimate Tic Tac Toe</h1>
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="800" height="800"></canvas>
+  <div id="controls">
     <button id="restartBtn">Restart</button>
-    <button id="mainMenuBtn2">Main Menu</button>
+    <button id="undoBtn">Undo</button>
+    <button id="aiBtn">Play vs AI</button>
+    <button id="themeBtn">Change Theme</button>
   </div>
+  <div id="status">Your turn!</div>
 </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// UI Elements
-const menuScreen = document.getElementById('menu');
-const pauseScreen = document.getElementById('pauseScreen');
-const gameOverScreen = document.getElementById('gameOverScreen');
-const startBtn = document.getElementById('startBtn');
-const resumeBtn = document.getElementById('resumeBtn');
+const statusDiv = document.getElementById('status');
 const restartBtn = document.getElementById('restartBtn');
-const mainMenuBtn = document.querySelectorAll('#mainMenuBtn, #mainMenuBtn2');
-const finalScoreText = document.getElementById('finalScore');
+const undoBtn = document.getElementById('undoBtn');
+const aiBtn = document.getElementById('aiBtn');
+const themeBtn = document.getElementById('themeBtn');
 
 let gameState = {
-  running: false,
-  paused: false,
-  gameOver: false,
-  level: 1,
-  score: 0,
-  highScores: [],
-  // Add more properties for complexity
+  boardSize: 3,
+  cellSize: 250,
+  grid: [], // 2D array
+  currentPlayer: 'X',
+  gameActive: true,
+  moveHistory: [],
+  vsAI: false,
+  themeIndex: 0,
+  themes: [
+    { background: '#111', lineColor: '#4CAF50', xColor: '#f00', oColor: '#00f' },
+    { background: '#222', lineColor: '#ffeb3b', xColor: '#e91e63', oColor: '#00bcd4' },
+    { background: '#000', lineColor: '#fff', xColor: '#fff', oColor: '#ccc' }
+  ],
+  aiThinking: false
 };
 
-/* Game parameters - can be customized or loaded from options */
-const configs = {
-  width: 800,
-  height: 600,
-  gridSize: 20,
-  initialSpeed: 150,
-  speedIncrement: 10,
-  maxSpeed: 50,
-  levelData: [], // Placeholder for level layouts
-  obstacles: [], // Obstacles position array
-  powerUps: [], // Power-up position array
-  skins: {
-    snakeColor: '#0f0',
-    foodColor: '#f00',
-    backgroundColor: '#111',
+// Initialize board
+function initBoard() {
+  gameState.grid = [];
+  for (let i=0; i<gameState.boardSize; i++) {
+    gameState.grid.push(new Array(gameState.boardSize).fill(''));
   }
-};
-
-/* Snake object with properties and methods */
-class Snake {
-  constructor() {
-    this.segments = [{x: 10, y: 10}]; // Starting position
-    this.direction = {x: 1, y: 0}; // Moving right initially
-    this.length = 1;
-    this.color = configs.skins.snakeColor;
-    // Add more properties for detailed body parts, animations, etc.
-  }
-
-  move() {
-    // Calculate new head position
-    const head = {x: this.segments[0].x + this.direction.x, y: this.segments[0].y + this.direction.y};
-    // Check collision with walls, obstacles, self, etc.
-    // Handle growth
-    this.segments.unshift(head);
-    if (this.segments.length > this.length) {
-      this.segments.pop();
-    }
-  }
-
-  grow() {
-    this.length++;
-  }
-
-  setDirection(dx, dy) {
-    // Prevent reverse direction
-    if (-dx === this.direction.x && -dy === this.direction.y) return;
-    this.direction = {x: dx, y: dy};
-  }
-
-  draw() {
-    ctx.fillStyle = this.color;
-    for (let segment of this.segments) {
-      ctx.fillRect(segment.x * configs.gridSize, segment.y * configs.gridSize, configs.gridSize, configs.gridSize);
-    }
-  }
-}
-
-/* Game objects for food, obstacles, power-ups, etc. */
-class Food {
-  constructor() {
-    this.position = {x: 0, y: 0};
-    this.color = configs.skins.foodColor;
-  }
-
-  spawn() {
-    // Random position not on snake or obstacles
-    // Implement collision check
-    this.position.x = Math.floor(Math.random() * (configs.width / configs.gridSize));
-    this.position.y = Math.floor(Math.random() * (configs.height / configs.gridSize));
-  }
-
-  draw() {
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc((this.position.x + 0.5) * configs.gridSize, (this.position.y + 0.5) * configs.gridSize, configs.gridSize/2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-/* Initialize game objects */
-let snake = new Snake();
-let food = new Food();
-
-function initGame() {
-  // Reset game variables
-  snake = new Snake();
-  food.spawn();
-  gameState.score = 0;
-  gameState.level = 1;
-  gameState.gameOver = false;
-  gameState.paused = false;
-  // Reset obstacles, power-ups, etc.
-  // Load level data
-  hideAllScreens();
-  startGameLoop();
-}
-
-function hideAllScreens() {
-  menuScreen.style.display = 'none';
-  pauseScreen.style.display = 'none';
-  gameOverScreen.style.display = 'none';
-}
-
-// Game Loop
-let gameIntervalId = null;
-function startGameLoop() {
-  if (gameIntervalId) clearInterval(gameIntervalId);
-  const speed = Math.max(configs.initialSpeed - (gameState.level - 1) * configs.speedIncrement, configs.maxSpeed);
-  gameIntervalId = setInterval(update, speed);
-}
-
-// Update game state
-function update() {
-  if (gameState.paused || gameState.gameOver) return;
-
-  snake.move();
-
-  // Check collisions with walls
-  const head = snake.segments[0];
-  if (head.x < 0 || head.x >= configs.width / configs.gridSize || head.y < 0 || head.y >= configs.height / configs.gridSize) {
-    endGame();
-    return;
-  }
-
-  // Check collisions with self
-  for (let i=1; i<snake.segments.length; i++) {
-    if (snake.segments[i].x === head.x && snake.segments[i].y === head.y) {
-      endGame();
-      return;
-    }
-  }
-
-  // Check collisions with obstacles
-  // if obstacles array exists
-
-  // Check food
-  if (head.x === food.position.x && head.y === food.position.y) {
-    snake.grow();
-    gameState.score++;
-    // Possibly spawn power-ups or obstacles here
-    food.spawn();
-    // Increase level or speed
-    if (gameState.score % 10 === 0) {
-      gameState.level++;
-      startGameLoop();
-    }
-  }
-
+  gameState.moveHistory = [];
+  gameState.currentPlayer = 'X';
+  gameState.gameActive = true;
   draw();
 }
 
-// Drawing everything
 function draw() {
-  ctx.fillStyle = configs.skins.backgroundColor;
-  ctx.fillRect(0, 0, configs.width, configs.height);
-  
-  // Draw obstacles
-  // for (let obs of obstacles) { ... }
+  const theme = gameState.themes[gameState.themeIndex];
+  ctx.fillStyle = theme.background;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  snake.draw();
-  food.draw();
+  // Draw grid lines
+  ctx.strokeStyle = theme.lineColor;
+  ctx.lineWidth = 4;
+  for (let i=1; i<gameState.boardSize; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * gameState.cellSize, 0);
+    ctx.lineTo(i * gameState.cellSize, canvas.height);
+    ctx.stroke();
 
-  // Draw UI info
-  ctx.fillStyle = '#fff';
-  ctx.font = '20px Arial';
-  ctx.fillText(`Score: ${gameState.score}`, 20, 30);
-  ctx.fillText(`Level: ${gameState.level}`, 20, 55);
-}
-
-// Handle game over
-function endGame() {
-  clearInterval(gameIntervalId);
-  gameState.gameOver = true;
-  showGameOverScreen();
-}
-
-// UI controls
-document.getElementById('startBtn').onclick = () => {
-  initGame();
-};
-document.getElementById('restartBtn').onclick = () => {
-  initGame();
-};
-document.getElementById('resumeBtn').onclick = () => {
-  gameState.paused = false;
-  startGameLoop();
-  hideAllScreens();
-};
-document.querySelectorAll('#mainMenuBtn, #mainMenuBtn2').forEach(btn => {
-  btn.onclick = () => {
-    showMenu();
-  };
-});
-
-function showMenu() {
-  hideAllScreens();
-  menuScreen.style.display = 'block';
-}
-function showGameOverScreen() {
-  document.getElementById('finalScore').textContent = 'Final Score: ' + gameState.score;
-  gameOverScreen.style.display = 'block';
-}
-function hideAllScreens() {
-  menuScreen.style.display = 'none';
-  pauseScreen.style.display = 'none';
-  gameOverScreen.style.display = 'none';
-}
-
-// Controls
-document.addEventListener('keydown', e => {
-  if (gameState.gameOver) return;
-  if (e.key === 'ArrowUp') snake.setDirection(0, -1);
-  if (e.key === 'ArrowDown') snake.setDirection(0, 1);
-  if (e.key === 'ArrowLeft') snake.setDirection(-1, 0);
-  if (e.key === 'ArrowRight') snake.setDirection(1, 0);
-  if (e.key === 'p') {
-    gameState.paused = !gameState.paused;
-    if (!gameState.paused) startGameLoop();
+    ctx.beginPath();
+    ctx.moveTo(0, i * gameState.cellSize);
+    ctx.lineTo(canvas.width, i * gameState.cellSize);
+    ctx.stroke();
   }
-});
 
-// Start with menu
-showMenu();
+  // Draw X and O
+  for (let r=0; r<gameState.boardSize; r++) {
+    for (let c=0; c<gameState.boardSize; c++) {
+      const cell = gameState.grid[r][c];
+      const x = c * gameState.cellSize;
+      const y = r * gameState.cellSize;
+
+      if (cell === 'X') {
+        drawX(x, y);
+      } else if (cell === 'O') {
+        drawO(x, y);
+      }
+    }
+  }
+}
+
+function drawX(x, y) {
+  const theme = gameState.themes[gameState.themeIndex];
+  ctx.strokeStyle = theme.xColor;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(x + 20, y + 20);
+  ctx.lineTo(x + gameState.cellSize - 20, y + gameState.cellSize - 20);
+  ctx.moveTo(x + gameState.cellSize - 20, y + 20);
+  ctx.lineTo(x + 20, y + gameState.cellSize - 20);
+  ctx.stroke();
+}
+
+function drawO(x, y) {
+  const theme = gameState.themes[gameState.themeIndex];
+  ctx.strokeStyle = theme.oColor;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(x + gameState.cellSize/2, y + gameState.cellSize/2, gameState.cellSize/2 - 20, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+canvas.addEventListener('click', handleCanvasClick);
+document.getElementById('restartBtn').onclick = () => { initBoard(); };
+document.getElementById('undoBtn').onclick = undoMove;
+document.getElementById('aiBtn').onclick = toggleAI;
+document.getElementById('themeBtn').onclick = changeTheme;
+
+function handleCanvasClick(e) {
+  if (!gameState.gameActive || gameState.aiThinking) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const row = Math.floor(y / gameState.cellSize);
+  const col = Math.floor(x / gameState.cellSize);
+  if (row >= 0 && row < gameState.boardSize && col >= 0 && col < gameState.boardSize) {
+    if (gameState.grid[row][col] === '') {
+      makeMove(row, col);
+      if (gameState.vsAI && gameState.currentPlayer === 'O') {
+        aiMove();
+      }
+    }
+  }
+}
+
+function makeMove(row, col) {
+  if (gameState.grid[row][col] !== '' || !gameState.gameActive) return;
+  gameState.grid[row][col] = gameState.currentPlayer;
+  gameState.moveHistory.push({row, col, player: gameState.currentPlayer});
+  if (checkWin(row, col)) {
+    gameOver(`${gameState.currentPlayer} wins!`);
+  } else if (isDraw()) {
+    gameOver("It's a draw!");
+  } else {
+    switchPlayer();
+    updateStatus();
+  }
+  draw();
+}
+
+function switchPlayer() {
+  gameState.currentPlayer = (gameState.currentPlayer === 'X') ? 'O' : 'X';
+}
+
+function updateStatus() {
+  if (gameState.vsAI && gameState.currentPlayer === 'O' && !gameState.gameOver) {
+    statusDiv.textContent = "AI is thinking...";
+  } else {
+    statusDiv.textContent = `Player ${gameState.currentPlayer}'s turn`;
+  }
+}
+
+function checkWin(row, col) {
+  const player = gameState.grid[row][col];
+  const size = gameState.boardSize;
+  // Check row
+  if (gameState.grid[row].every(cell => cell === player)) return true;
+  // Check column
+  let colWin = true;
+  for (let r=0; r<size; r++) {
+    if (gameState.grid[r][col] !== player) {
+      colWin = false;
+      break;
+    }
+  }
+  if (colWin) return true;
+  // Check diagonals
+  if (row === col) {
+    let diag1 = true;
+    for (let i=0; i<size; i++) {
+      if (gameState.grid[i][i] !== player) {
+        diag1 = false;
+        break;
+      }
+    }
+    if (diag1) return true;
+  }
+  if (row + col === size -1) {
+    let diag2 = true;
+    for (let i=0; i<size; i++) {
+      if (gameState.grid[i][size - 1 - i] !== player) {
+        diag2 = false;
+        break;
+      }
+    }
+    if (diag2) return true;
+  }
+  return false;
+}
+
+function isDraw() {
+  for (let row of gameState.grid) {
+    if (row.includes('')) return false;
+  }
+  return true;
+}
+
+function gameOver(message) {
+  gameState.gameActive = false;
+  statusDiv.textContent = message;
+}
+
+// Undo last move
+function undoMove() {
+  if (gameState.moveHistory.length === 0 || !gameState.gameActive) return;
+  const lastMove = gameState.moveHistory.pop();
+  gameState.grid[lastMove.row][lastMove.col] = '';
+  gameState.currentPlayer = lastMove.player;
+  updateStatus();
+  draw();
+}
+
+// Toggle AI mode
+function toggleAI() {
+  gameState.vsAI = !gameState.vsAI;
+  alert(`Playing vs AI: ${gameState.vsAI ? 'Yes' : 'No'}`);
+}
+
+// Change Theme
+function changeTheme() {
+  gameState.themeIndex = (gameState.themeIndex + 1) % gameState.themes.length;
+  draw();
+}
+
+// AI move (simple random for demo, can implement Minimax for complexity)
+async function aiMove() {
+  gameState.aiThinking = true;
+  updateStatus();
+  // Simulate thinking delay
+  await new Promise(r => setTimeout(r, 500));
+  const emptyCells = [];
+  for (let r=0; r<gameState.boardSize; r++) {
+    for (let c=0; c<gameState.boardSize; c++) {
+      if (gameState.grid[r][c] === '') {
+        emptyCells.push({row: r, col: c});
+      }
+    }
+  }
+  if (emptyCells.length === 0) return;
+  const choice = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+  makeMove(choice.row, choice.col);
+  gameState.aiThinking = false;
+  updateStatus();
+}
+
+// Start game
+initBoard();
 
 </script>
 </body>

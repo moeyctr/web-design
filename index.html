@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Futuristic Connect 5 vs Robot</title>
 <style>
   body {
@@ -230,7 +230,7 @@ function startGame() {
 function showRPSChoices() { document.getElementById('rpsChoices').style.display = 'flex'; }
 function hideRPSChoices() { document.getElementById('rpsChoices').style.display = 'none'; }
 
-// RPS buttons
+// RPS button handlers
 document.querySelectorAll('.rpsButton').forEach(btn => {
   btn.onclick = () => {
     game.currentRPSChoice = btn.getAttribute('data-choice');
@@ -255,7 +255,7 @@ function handleRPSResult() {
   game.currentRPSChoice = null;
 
   if (winner === 'X') {
-    // You won in RPS, set to allow placement
+    // You won RPS, set to allow placement
     game.currentPlayer = 'X';
     game.turnState = 'PLACING';
     game.gameActive = true; // ensure game is active
@@ -298,7 +298,7 @@ function handleCanvasClick(e) {
     if (game.grid[row][col] === '') {
       game.grid[row][col] = 'X'; // human X
       if (checkWin(row, col, 'X')) {
-        game.gameActive = false;
+        game.gameActive = false; // game over
         statusDiv.textContent = "Congratulations! You won!";
         draw();
         return;
@@ -309,9 +309,9 @@ function handleCanvasClick(e) {
         draw();
         return;
       }
-      // After your move, set game to wait for RPS again
-      game.currentPlayer = 'X'; // still human
-      game.turnState = 'RPS'; // wait for RPS choice
+      // After placement, reset to RPS for next turn
+      game.currentPlayer = 'X'; // keep as human
+      game.turnState = 'RPS'; // wait for next RPS
       showRPSChoices();
       updateStatus();
       draw();
@@ -332,22 +332,24 @@ function robotRPS() {
     return;
   }
 
-  // Set who will place
+  // Record winner
   game.winnerOfRPS = winner;
   game.currentRPSChoice = null;
+
   if (winner === 'O') {
-    // Robot won RPS, place 'O' automatically
+    // Robot won RPS: place O automatically
     robotPlaceMark();
   } else {
-    // Human won RPS, wait for placement
+    // Human won RPS: wait for placement
     alert("Your turn to place X");
-    game.currentPlayer = 'X'; // ensure human
+    game.currentPlayer = 'X';
     game.turnState = 'PLACING';
+    game.gameActive = true; // ensure active
     showRPSChoices();
   }
 }
 
-// Robot automatically places 'O'
+// Robot places 'O' automatically
 function robotPlaceMark() {
   const emptyCells = [];
   for (let r=0; r<game.height; r++) {
@@ -367,7 +369,7 @@ function robotPlaceMark() {
   game.grid[choice.r][choice.c] = 'O';
 
   if (checkWin(choice.r, choice.c, 'O')) {
-    game.gameActive = false;
+    game.gameActive = false; // game over
     statusDiv.textContent = "Robot wins!";
     draw();
     return;
@@ -416,7 +418,7 @@ function checkWin(row, col, player) {
   return false;
 }
 
-// Draw functions
+// Check for draw
 function checkDraw() {
   for (let r=0; r<game.height; r++) {
     for (let c=0; c<game.width; c++) {

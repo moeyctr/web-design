@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Connect 5 vs Robot (5x5)</title>
+<title>Futuristic Connect 5 vs Robot</title>
 <style>
   body {
     margin: 0;
-    background: linear-gradient(135deg, #222, #555);
-    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    font-family: 'Orbitron', 'Arial', sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -16,9 +16,14 @@
     min-height: 100vh;
     color: #fff;
   }
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
 
   h1 {
     margin-top: 20px;
+    font-size: 2.5em;
+    letter-spacing: 2px;
+    color: #00ffe8;
+    text-shadow: 0 0 10px #00ffe8, 0 0 20px #00ffe8;
   }
 
   #gameContainer {
@@ -30,63 +35,82 @@
 
   #gameCanvas {
     background: #111;
-    border: 8px solid #4CAF50;
-    border-radius: 12px;
-    box-shadow: 0 0 20px #4CAF50 inset;
+    border: 8px solid #00ffe8;
+    border-radius: 20px;
+    box-shadow: 0 0 30px #00ffe8 inset, 0 0 10px #00ffe8;
+    transition: box-shadow 0.3s, border-color 0.3s;
   }
 
-  #status {
-    margin-top: 15px;
-    font-size: 1.4em;
-  }
-
+  /* Futuristic glowing buttons for RPS choices */
   #rpsChoices {
     display: none;
-    margin-top: 15px;
-    gap: 15px;
+    margin-top: 20px;
+    gap: 20px;
+    display: flex;
+    justify-content: center;
   }
 
   .rpsButton {
-    padding: 12px 24px;
-    font-size: 1.2em;
+    padding: 15px 30px;
+    font-size: 1.5em;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
-    background-color: #2196F3;
+    background: linear-gradient(45deg, #00ffe8, #0077ff);
+    box-shadow: 0 0 20px #00ffe8, inset 0 0 10px #fff;
     color: #fff;
-    transition: background-color 0.3s;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
   }
 
   .rpsButton:hover {
-    background-color: #1976D2;
+    box-shadow: 0 0 30px #00ffe8, inset 0 0 15px #fff;
+    transform: scale(1.1);
   }
 
+  /* Main control buttons with futuristic glow */
   #controls {
-    margin-top: 20px;
+    margin-top: 30px;
     display: flex;
-    gap: 20px;
+    gap: 30px;
     flex-wrap: wrap;
   }
 
   button {
-    padding: 12px 24px;
-    font-size: 1.2em;
+    padding: 15px 25px;
+    font-size: 1.4em;
     border: none;
-    border-radius: 8px;
-    background-color: #4CAF50;
-    color: white;
+    border-radius: 15px;
     cursor: pointer;
-    transition: background-color 0.3s;
+    background: linear-gradient(45deg, #ff00cc, #3333ff);
+    box-shadow: 0 0 20px #ff00cc, inset 0 0 10px #fff;
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
   }
 
   button:hover {
-    background-color: #45a049;
+    box-shadow: 0 0 30px #ff00cc, inset 0 0 15px #fff;
+    transform: scale(1.05);
+  }
+
+  /* Additional styling for status text */
+  #status {
+    margin-top: 20px;
+    font-size: 1.8em;
+    text-shadow: 0 0 10px #fff, 0 0 20px #0ff;
   }
 </style>
+<!-- Load Orbitron font for a futuristic look -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
 </head>
 <body>
 
-<h1>Connect 5 vs Robot (5x5)</h1>
+<h1>Futuristic Connect 5 vs Robot</h1>
 <div id="gameContainer">
   <canvas id="gameCanvas" width="500" height="500"></canvas>
   <div id="status">Click "Start Game" to begin</div>
@@ -95,7 +119,7 @@
     <button class="rpsButton" data-choice="Paper">Paper</button>
     <button class="rpsButton" data-choice="Scissors">Scissors</button>
   </div>
-  <div id="gameControls">
+  <div id="gameControls" style="margin-top:20px;">
     <button id="startBtn">Start Game</button>
     <button id="restartBtn" disabled>Restart</button>
   </div>
@@ -116,7 +140,7 @@ let game = {
   width: 5,
   height: 5,
   grid: [],
-  currentPlayer: 'X', // 'X' is human, 'O' is robot
+  currentPlayer: 'X', // human always X
   gameActive: false,
   connectToWin: 5,
   turnState: 'RPS', // 'RPS' or 'PLACING'
@@ -141,9 +165,9 @@ function initGrid() {
 // Draw grid and pieces
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // draw grid lines
   ctx.strokeStyle = '#555';
   ctx.lineWidth = 1;
-  // Draw grid lines
   for (let i=1; i<game.width; i++) {
     ctx.beginPath();
     ctx.moveTo(i * game.size, 0);
@@ -156,7 +180,7 @@ function draw() {
     ctx.lineTo(canvas.width, j * game.size);
     ctx.stroke();
   }
-  // Draw X and O
+  // draw X and O
   for (let r=0; r<game.height; r++) {
     for (let c=0; c<game.width; c++) {
       const cell = game.grid[r][c];
@@ -208,14 +232,10 @@ function startGame() {
 }
 
 // Show RPS choices
-function showRPSChoices() {
-  document.getElementById('rpsChoices').style.display = 'flex';
-}
-function hideRPSChoices() {
-  document.getElementById('rpsChoices').style.display = 'none';
-}
+function showRPSChoices() { document.getElementById('rpsChoices').style.display = 'flex'; }
+function hideRPSChoices() { document.getElementById('rpsChoices').style.display = 'none'; }
 
-// Handle RPS selection
+// RPS button handlers
 document.querySelectorAll('.rpsButton').forEach(btn => {
   btn.onclick = () => {
     game.currentRPSChoice = btn.getAttribute('data-choice');
@@ -223,28 +243,31 @@ document.querySelectorAll('.rpsButton').forEach(btn => {
   };
 });
 
+// Handle RPS result: human chooses, robot chooses randomly
 function handleRPSResult() {
-  // AI randomly chooses RPS
   const choices = ['Rock','Paper','Scissors'];
-  const aiChoice = choices[Math.floor(Math.random() * 3)];
-  alert(`You chose ${game.currentRPSChoice}. Robot chose ${aiChoice}.`);
-  const winner = determineRPSWinner(game.currentRPSChoice, aiChoice);
+  const robotChoice = choices[Math.floor(Math.random() * 3)];
+  alert(`You chose ${game.currentRPSChoice}. Robot chose ${robotChoice}.`);
+
+  const winner = determineRPSWinner(game.currentRPSChoice, robotChoice);
   if (!winner) {
     alert("It's a tie! Choose again.");
     showRPSChoices();
     return;
   }
-  // Winner of RPS gets to place
+  // Winner gets to place
   game.winnerOfRPS = winner;
   game.currentTurnPlayer = winner;
   game.turnState = 'PLACING';
-  updateStatus();
-  hideRPSChoices();
 
-  // If robot wins, robot places automatically
+  // If robot wins, place automatically
   if (winner === 'O') {
     robotPlaceMark();
+  } else {
+    // Human to place
+    updateStatus();
   }
+  hideRPSChoices();
 }
 
 // Determine RPS winner
@@ -261,7 +284,7 @@ function determineRPSWinner(choice1, choice2) {
   }
 }
 
-// Handle human move
+// Human places mark
 function handleCanvasClick(e) {
   if (!game.gameActive || game.turnState !== 'PLACING') return;
   if (game.winnerOfRPS === 'O') {
@@ -287,10 +310,9 @@ function handleCanvasClick(e) {
         draw();
         return;
       }
-      // Switch turn to robot
-      game.currentTurnPlayer = 'O';
-      game.turnState = 'RPS';
-      // Robot's turn to select RPS
+      // Robot's turn to place after human
+      game.currentRPSChoice = null;
+      // Robot now plays RPS
       setTimeout(() => {
         robotRPS();
       }, 500);
@@ -312,19 +334,22 @@ function robotRPS() {
     showRPSChoices();
     return;
   }
+  // Winner of RPS gets to place
   game.winnerOfRPS = winner;
   game.currentTurnPlayer = winner;
   game.turnState = 'PLACING';
 
-  // Place mark automatically for robot
   if (winner === 'O') {
     robotPlaceMark();
+  } else {
+    // Human to choose RPS again
+    alert("Your turn to choose RPS.");
+    showRPSChoices();
   }
 }
 
-// Robot places a mark
+// Robot places mark
 function robotPlaceMark() {
-  // Random empty cell
   const emptyCells = [];
   for (let r=0; r<game.height; r++) {
     for (let c=0; c<game.width; c++) {
@@ -353,12 +378,10 @@ function robotPlaceMark() {
   alert("Your turn to choose RPS.");
   showRPSChoices();
   // Switch back to human
-  game.currentPlayer = 'X';
   updateStatus();
-  draw();
 }
 
-// Check for win (connect 5)
+// Check if someone wins (connect 5)
 function checkWin(row, col, player) {
   const directions = [
     {dr:1, dc:0}, {dr:0, dc:1}, {dr:1, dc:1}, {dr:1, dc:-1}

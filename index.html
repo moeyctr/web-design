@@ -230,7 +230,7 @@ function startGame() {
 function showRPSChoices() { document.getElementById('rpsChoices').style.display = 'flex'; }
 function hideRPSChoices() { document.getElementById('rpsChoices').style.display = 'none'; }
 
-// RPS button handlers
+// RPS buttons
 document.querySelectorAll('.rpsButton').forEach(btn => {
   btn.onclick = () => {
     game.currentRPSChoice = btn.getAttribute('data-choice');
@@ -250,16 +250,18 @@ function handleRPSResult() {
     return;
   }
 
-  // Set who will place
+  // Record who won RPS
   game.winnerOfRPS = winner;
-  game.currentRPSChoice = null; // reset for next round
+  game.currentRPSChoice = null;
 
   if (winner === 'X') {
-    // Human won RPS, set for placement
+    // You won in RPS, set to allow placement
     game.currentPlayer = 'X';
     game.turnState = 'PLACING';
-    alert("Your turn to place X");
+    game.gameActive = true; // ensure game is active
+    alert("You won RPS! Please place your X.");
     showRPSChoices(); // optional, can hide if you want
+    updateStatus();
   } else {
     // Robot won RPS, place 'O' automatically
     robotPlaceMark();
@@ -280,7 +282,7 @@ function determineRPSWinner(choice1, choice2) {
   }
 }
 
-// Handle human placement
+// Human placement handler
 function handleCanvasClick(e) {
   if (!game.gameActive || game.turnState !== 'PLACING') return;
   if (game.currentPlayer !== 'X') {
@@ -294,10 +296,10 @@ function handleCanvasClick(e) {
   const col = Math.floor(x / game.size);
   if (row >= 0 && row < game.height && col >= 0 && col < game.width) {
     if (game.grid[row][col] === '') {
-      game.grid[row][col] = 'X'; // human always X
+      game.grid[row][col] = 'X'; // human X
       if (checkWin(row, col, 'X')) {
         game.gameActive = false;
-        statusDiv.textContent = "You win!";
+        statusDiv.textContent = "Congratulations! You won!";
         draw();
         return;
       }
@@ -307,9 +309,9 @@ function handleCanvasClick(e) {
         draw();
         return;
       }
-      // After your placement, set state to 'RPS' for next turn
+      // After your move, set game to wait for RPS again
       game.currentPlayer = 'X'; // still human
-      game.turnState = 'RPS'; // next round RPS
+      game.turnState = 'RPS'; // wait for RPS choice
       showRPSChoices();
       updateStatus();
       draw();
@@ -332,15 +334,15 @@ function robotRPS() {
 
   // Set who will place
   game.winnerOfRPS = winner;
-  game.currentRPSChoice = null; // reset for next round
+  game.currentRPSChoice = null;
   if (winner === 'O') {
     // Robot won RPS, place 'O' automatically
     robotPlaceMark();
   } else {
-    // Human won RPS
+    // Human won RPS, wait for placement
     alert("Your turn to place X");
-    game.currentPlayer = 'X'; // ensure human is X
-    game.turnState = 'RPS'; // wait for next RPS input
+    game.currentPlayer = 'X'; // ensure human
+    game.turnState = 'PLACING';
     showRPSChoices();
   }
 }
@@ -348,10 +350,10 @@ function robotRPS() {
 // Robot automatically places 'O'
 function robotPlaceMark() {
   const emptyCells = [];
-  for (let r = 0; r < game.height; r++) {
-    for (let c = 0; c < game.width; c++) {
+  for (let r=0; r<game.height; r++) {
+    for (let c=0; c<game.width; c++) {
       if (game.grid[r][c] === '') {
-        emptyCells.push({ r, c });
+        emptyCells.push({r, c});
       }
     }
   }
@@ -382,19 +384,16 @@ function robotPlaceMark() {
   game.turnState = 'RPS';
   game.currentRPSChoice = null;
   showRPSChoices();
-  // Switch back to human
+  // Switch back to human for next placement
   game.currentPlayer = 'X';
   updateStatus();
   draw();
 }
 
-// Check win condition
+// Win check
 function checkWin(row, col, player) {
   const directions = [
-    { dr: 1, dc: 0 },
-    { dr: 0, dc: 1 },
-    { dr: 1, dc: 1 },
-    { dr: 1, dc: -1 }
+    { dr:1, dc:0 }, { dr:0, dc:1 }, { dr:1, dc:1 }, { dr:1, dc:-1 }
   ];
   for (const d of directions) {
     let count = 1;
@@ -417,14 +416,32 @@ function checkWin(row, col, player) {
   return false;
 }
 
-// Check for draw
+// Draw functions
 function checkDraw() {
-  for (let r = 0; r < game.height; r++) {
-    for (let c = 0; c < game.width; c++) {
+  for (let r=0; r<game.height; r++) {
+    for (let c=0; c<game.width; c++) {
       if (game.grid[r][c] === '') return false;
     }
   }
   return true;
+}
+
+// Initialize game
+document.getElementById('startBtn').onclick = () => {
+  startGame();
+};
+
+function startGame() {
+  initGrid();
+  game.currentPlayer = 'X'; // Human always X
+  game.gameActive = true;
+  game.turnState = 'RPS';
+  game.lastRPSChoice = null;
+  game.winnerOfRPS = null;
+  statusDiv.textContent = "Choose Rock, Paper, or Scissors.";
+  showRPSChoices();
+  document.getElementById('restartBtn').disabled = false;
+  draw();
 }
 </script>
 </body>

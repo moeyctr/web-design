@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Complex Tic Tac Toe</title>
+<title>Connect 5 with RPS</title>
 <style>
   body {
     margin: 0;
@@ -22,13 +22,12 @@
   }
 
   #gameContainer {
-    margin-top: 30px;
+    margin-top: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
 
-  /* Canvas for game */
   #gameCanvas {
     background: #111;
     border: 8px solid #4CAF50;
@@ -36,7 +35,32 @@
     box-shadow: 0 0 20px #4CAF50 inset;
   }
 
-  /* Controls & info */
+  #status {
+    margin-top: 15px;
+    font-size: 1.4em;
+  }
+
+  #rpsChoices {
+    display: none;
+    margin-top: 15px;
+    gap: 15px;
+  }
+
+  .rpsButton {
+    padding: 12px 24px;
+    font-size: 1.2em;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background-color: #2196F3;
+    color: #fff;
+    transition: background-color 0.3s;
+  }
+
+  .rpsButton:hover {
+    background-color: #1976D2;
+  }
+
   #controls {
     margin-top: 20px;
     display: flex;
@@ -58,278 +82,355 @@
   button:hover {
     background-color: #45a049;
   }
-
-  /* Theme selector */
-  #themeSelector {
-    padding: 10px;
-    font-size: 1em;
-  }
-
-  /* Info display */
-  #status {
-    margin-top: 20px;
-    font-size: 1.4em;
-  }
-
-  /* Additional UI for stats, leaderboard, etc., can be added here */
-
 </style>
 </head>
 <body>
 
-<h1>Ultimate Tic Tac Toe</h1>
+<h1>Connect 5 with RPS</h1>
 <div id="gameContainer">
   <canvas id="gameCanvas" width="800" height="800"></canvas>
-  <div id="controls">
-    <button id="restartBtn">Restart</button>
-    <button id="undoBtn">Undo</button>
-    <button id="aiBtn">Play vs AI</button>
-    <button id="themeBtn">Change Theme</button>
+  <div id="status">Click "Start Game" to begin</div>
+  <div id="rpsChoices">
+    <button class="rpsButton" data-choice="Rock">Rock</button>
+    <button class="rpsButton" data-choice="Paper">Paper</button>
+    <button class="rpsButton" data-choice="Scissors">Scissors</button>
   </div>
-  <div id="status">Your turn!</div>
+  <div id="gameControls">
+    <button id="startBtn">Start Game</button>
+    <button id="restartBtn" disabled>Restart</button>
+  </div>
 </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-
 const statusDiv = document.getElementById('status');
+const rpsDiv = document.getElementById('rpsChoices');
+const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
-const undoBtn = document.getElementById('undoBtn');
-const aiBtn = document.getElementById('aiBtn');
-const themeBtn = document.getElementById('themeBtn');
 
-let gameState = {
-  boardSize: 3,
-  cellSize: 250,
-  grid: [], // 2D array
-  currentPlayer: 'X',
-  gameActive: true,
-  moveHistory: [],
-  vsAI: false,
-  themeIndex: 0,
-  themes: [
-    { background: '#111', lineColor: '#4CAF50', xColor: '#f00', oColor: '#00f' },
-    { background: '#222', lineColor: '#ffeb3b', xColor: '#e91e63', oColor: '#00bcd4' },
-    { background: '#000', lineColor: '#fff', xColor: '#fff', oColor: '#ccc' }
-  ],
-  aiThinking: false
+const rpsButtons = document.querySelectorAll('.rpsButton');
+
+let game = {
+  size: 20, // grid size
+  width: 40, // number of cells horizontally
+  height: 40, // vertically
+  grid: [],
+  currentPlayer: 'X', // 'X' or 'O'
+  gameActive: false,
+  connectToWin: 5,
+  mode: 'player', // 'player' or 'vsAI'
+  lastWinner: null,
+  turnState: 'RPS', // 'RPS' or 'PLACING'
+  rpsChoice: null,
+  winnerOfRPS: null,
+  currentTurnPlayer: null, // 'X' or 'O'
+  lastMove: null
 };
 
-// Initialize board
-function initBoard() {
-  gameState.grid = [];
-  for (let i=0; i<gameState.boardSize; i++) {
-    gameState.grid.push(new Array(gameState.boardSize).fill(''));
+// Initialize grid
+function initGrid() {
+  game.grid = [];
+  for (let r=0; r<game.height; r++) {
+    const row = [];
+    for (let c=0; c<game.width; c++) {
+      row.push('');
+    }
+    game.grid.push(row);
   }
-  gameState.moveHistory = [];
-  gameState.currentPlayer = 'X';
-  gameState.gameActive = true;
-  draw();
 }
 
+// Draw grid and pieces
 function draw() {
-  const theme = gameState.themes[gameState.themeIndex];
-  ctx.fillStyle = theme.background;
+  ctx.fillStyle = '#222';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw grid lines
-  ctx.strokeStyle = theme.lineColor;
-  ctx.lineWidth = 4;
-  for (let i=1; i<gameState.boardSize; i++) {
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1;
+  for (let i=1; i<game.width; i++) {
     ctx.beginPath();
-    ctx.moveTo(i * gameState.cellSize, 0);
-    ctx.lineTo(i * gameState.cellSize, canvas.height);
+    ctx.moveTo(i * game.size, 0);
+    ctx.lineTo(i * game.size, canvas.height);
     ctx.stroke();
-
+  }
+  for (let j=1; j<game.height; j++) {
     ctx.beginPath();
-    ctx.moveTo(0, i * gameState.cellSize);
-    ctx.lineTo(canvas.width, i * gameState.cellSize);
+    ctx.moveTo(0, j * game.size);
+    ctx.lineTo(canvas.width, j * game.size);
     ctx.stroke();
   }
 
-  // Draw X and O
-  for (let r=0; r<gameState.boardSize; r++) {
-    for (let c=0; c<gameState.boardSize; c++) {
-      const cell = gameState.grid[r][c];
-      const x = c * gameState.cellSize;
-      const y = r * gameState.cellSize;
-
+  // Draw X/O
+  for (let r=0; r<game.height; r++) {
+    for (let c=0; c<game.width; c++) {
+      const cell = game.grid[r][c];
       if (cell === 'X') {
-        drawX(x, y);
+        drawX(c * game.size, r * game.size);
       } else if (cell === 'O') {
-        drawO(x, y);
+        drawO(c * game.size, r * game.size);
       }
     }
   }
 }
 
+// Draw X
 function drawX(x, y) {
-  const theme = gameState.themes[gameState.themeIndex];
-  ctx.strokeStyle = theme.xColor;
-  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#FF4136';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(x + 20, y + 20);
-  ctx.lineTo(x + gameState.cellSize - 20, y + gameState.cellSize - 20);
-  ctx.moveTo(x + gameState.cellSize - 20, y + 20);
-  ctx.lineTo(x + 20, y + gameState.cellSize - 20);
+  ctx.moveTo(x + 4, y + 4);
+  ctx.lineTo(x + game.size - 4, y + game.size - 4);
+  ctx.moveTo(x + game.size - 4, y + 4);
+  ctx.lineTo(x + 4, y + game.size - 4);
   ctx.stroke();
 }
 
+// Draw O
 function drawO(x, y) {
-  const theme = gameState.themes[gameState.themeIndex];
-  ctx.strokeStyle = theme.oColor;
-  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#0074D9';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(x + gameState.cellSize/2, y + gameState.cellSize/2, gameState.cellSize/2 - 20, 0, Math.PI * 2);
+  ctx.arc(x + game.size/2, y + game.size/2, game.size/2 - 4, 0, Math.PI * 2);
   ctx.stroke();
 }
 
+// Handle clicks
 canvas.addEventListener('click', handleCanvasClick);
-document.getElementById('restartBtn').onclick = () => { initBoard(); };
-document.getElementById('undoBtn').onclick = undoMove;
-document.getElementById('aiBtn').onclick = toggleAI;
-document.getElementById('themeBtn').onclick = changeTheme;
+document.getElementById('startBtn').onclick = () => {
+  startGame();
+};
+document.getElementById('restartBtn').onclick = () => {
+  startGame();
+};
 
-function handleCanvasClick(e) {
-  if (!gameState.gameActive || gameState.aiThinking) return;
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  const row = Math.floor(y / gameState.cellSize);
-  const col = Math.floor(x / gameState.cellSize);
-  if (row >= 0 && row < gameState.boardSize && col >= 0 && col < gameState.boardSize) {
-    if (gameState.grid[row][col] === '') {
-      makeMove(row, col);
-      if (gameState.vsAI && gameState.currentPlayer === 'O') {
-        aiMove();
-      }
-    }
-  }
-}
-
-function makeMove(row, col) {
-  if (gameState.grid[row][col] !== '' || !gameState.gameActive) return;
-  gameState.grid[row][col] = gameState.currentPlayer;
-  gameState.moveHistory.push({row, col, player: gameState.currentPlayer});
-  if (checkWin(row, col)) {
-    gameOver(`${gameState.currentPlayer} wins!`);
-  } else if (isDraw()) {
-    gameOver("It's a draw!");
-  } else {
-    switchPlayer();
-    updateStatus();
-  }
+// Initialize game
+function startGame() {
+  initGrid();
+  game.currentPlayer = 'X';
+  game.gameActive = true;
+  game.mode = 'player'; // or 'vsAI'
+  game.turnState = 'RPS';
+  game.winnerOfRPS = null;
+  game.lastMove = null;
+  game.currentTurnPlayer = null;
+  document.getElementById('status').textContent = "Click 'Start Game' to begin";
+  document.getElementById('restartBtn').disabled = false;
+  hideRPSChoices();
   draw();
 }
 
-function switchPlayer() {
-  gameState.currentPlayer = (gameState.currentPlayer === 'X') ? 'O' : 'X';
+// Hide RPS choices
+function showRPSChoices() {
+  rpsDiv.style.display = 'flex';
+  document.getElementById('status').textContent = "Choose Rock, Paper, or Scissors";
+}
+function hideRPSChoices() {
+  rpsDiv.style.display = 'none';
 }
 
-function updateStatus() {
-  if (gameState.vsAI && gameState.currentPlayer === 'O' && !gameState.gameOver) {
-    statusDiv.textContent = "AI is thinking...";
+// Handle RPS selection
+rpsButtons.forEach(btn => {
+  btn.onclick = () => {
+    game.rpsChoice = btn.getAttribute('data-choice');
+    handleRPSResult();
+  };
+});
+
+function handleRPSResult() {
+  // For simplicity, assume human vs human, or implement AI logic here
+  // For demo, both players choose randomly if vsAI
+  if (game.mode === 'vsAI' && game.currentPlayer === 'O') {
+    // AI choice
+    const choices = ['Rock','Paper','Scissors'];
+    game.rpsChoice = choices[Math.floor(Math.random()*3)];
+  }
+  // Determine winner
+  const winner = determineRPSWinner(game.rpsChoice, game.lastRPSChoice);
+  game.winnerOfRPS = winner;
+  document.getElementById('status').textContent = winner ? `Winner: ${winner}` : 'It\'s a tie!';
+  
+  // If tie, rechoose
+  if (!winner) {
+    // prompt again
+    setTimeout(() => {
+      showRPSChoices();
+    }, 500);
+    return;
+  }
+
+  // Set who will place
+  if (winner === 'X') {
+    game.currentTurnPlayer = 'X';
+  } else if (winner === 'O') {
+    game.currentTurnPlayer = 'O';
   } else {
-    statusDiv.textContent = `Player ${gameState.currentPlayer}'s turn`;
+    // tie, decide randomly
+    game.currentTurnPlayer = Math.random() > 0.5 ? 'X' : 'O';
+  }
+
+  game.turnState = 'PLACING'; // now players place their mark
+  updateStatus();
+  hideRPSChoices();
+}
+
+// Determine RPS winner
+function determineRPSWinner(choice1, choice2) {
+  if (!choice1 || !choice2) return null;
+  if (choice1 === choice2) return null; // tie
+  
+  if (
+    (choice1 === 'Rock' && choice2 === 'Scissors') ||
+    (choice1 === 'Scissors' && choice2 === 'Paper') ||
+    (choice1 === 'Paper' && choice2 === 'Rock')
+  ) {
+    return game.currentPlayer; // current player wins
+  }
+  return game.currentPlayer === 'X' ? 'O' : 'X'; // other player wins
+}
+
+// Handle canvas clicks for placing marks
+function handleCanvasClick(e) {
+  if (!game.gameActive || game.turnState !== 'PLACING') return;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const row = Math.floor(y / game.size);
+  const col = Math.floor(x / game.size);
+
+  if (row >= 0 && row < game.height && col >= 0 && col < game.width) {
+    if (game.grid[row][col] === '') {
+      // Place mark
+      game.grid[row][col] = game.currentPlayer;
+      game.lastMove = {row, col, player: game.currentPlayer};
+      // Check for win
+      if (checkWin(row, col, game.currentPlayer)) {
+        game.gameActive = false;
+        document.getElementById('status').textContent = `${game.currentPlayer} wins!`;
+        draw();
+        return;
+      } else if (checkDraw()) {
+        game.gameActive = false;
+        document.getElementById('status').textContent = "It's a draw!";
+        draw();
+        return;
+      }
+      // Switch to next player
+      switchPlayer();
+
+      // After placing, start new RPS for next turn
+      game.turnState = 'RPS';
+      setTimeout(() => {
+        // Switch player for next RPS
+        game.currentPlayer = game.currentPlayer === 'X' ? 'O' : 'X';
+        showRPSChoices();
+      }, 300);
+      draw();
+    }
   }
 }
 
-function checkWin(row, col) {
-  const player = gameState.grid[row][col];
-  const size = gameState.boardSize;
-  // Check row
-  if (gameState.grid[row].every(cell => cell === player)) return true;
-  // Check column
-  let colWin = true;
-  for (let r=0; r<size; r++) {
-    if (gameState.grid[r][col] !== player) {
-      colWin = false;
-      break;
+// Switch players
+function switchPlayer() {
+  // No change here, actual switch occurs after RPS
+}
+
+// Check win condition for Connect 5
+function checkWin(row, col, player) {
+  const directions = [
+    {dr:1, dc:0}, {dr:0, dc:1}, {dr:1, dc:1}, {dr:1, dc:-1}
+  ];
+
+  for (let d of directions) {
+    let count = 1;
+
+    // forward direction
+    let r = row + d.dr;
+    let c = col + d.dc;
+    while (r >=0 && r < game.height && c >=0 && c < game.width && game.grid[r][c] === player) {
+      count++;
+      r += d.dr;
+      c += d.dc;
     }
-  }
-  if (colWin) return true;
-  // Check diagonals
-  if (row === col) {
-    let diag1 = true;
-    for (let i=0; i<size; i++) {
-      if (gameState.grid[i][i] !== player) {
-        diag1 = false;
-        break;
-      }
+
+    // backward direction
+    r = row - d.dr;
+    c = col - d.dc;
+    while (r >=0 && r < game.height && c >=0 && c < game.width && game.grid[r][c] === player) {
+      count++;
+      r -= d.dr;
+      c -= d.dc;
     }
-    if (diag1) return true;
-  }
-  if (row + col === size -1) {
-    let diag2 = true;
-    for (let i=0; i<size; i++) {
-      if (gameState.grid[i][size - 1 - i] !== player) {
-        diag2 = false;
-        break;
-      }
-    }
-    if (diag2) return true;
+
+    if (count >= game.connectToWin) return true;
   }
   return false;
 }
 
-function isDraw() {
-  for (let row of gameState.grid) {
-    if (row.includes('')) return false;
+// Check draw
+function checkDraw() {
+  for (let r=0; r<game.height; r++) {
+    for (let c=0; c<game.width; c++) {
+      if (game.grid[r][c] === '') return false;
+    }
   }
   return true;
 }
 
-function gameOver(message) {
-  gameState.gameActive = false;
-  statusDiv.textContent = message;
-}
-
-// Undo last move
-function undoMove() {
-  if (gameState.moveHistory.length === 0 || !gameState.gameActive) return;
-  const lastMove = gameState.moveHistory.pop();
-  gameState.grid[lastMove.row][lastMove.col] = '';
-  gameState.currentPlayer = lastMove.player;
-  updateStatus();
-  draw();
-}
-
-// Toggle AI mode
-function toggleAI() {
-  gameState.vsAI = !gameState.vsAI;
-  alert(`Playing vs AI: ${gameState.vsAI ? 'Yes' : 'No'}`);
-}
-
-// Change Theme
-function changeTheme() {
-  gameState.themeIndex = (gameState.themeIndex + 1) % gameState.themes.length;
-  draw();
-}
-
-// AI move (simple random for demo, can implement Minimax for complexity)
-async function aiMove() {
-  gameState.aiThinking = true;
-  updateStatus();
-  // Simulate thinking delay
-  await new Promise(r => setTimeout(r, 500));
-  const emptyCells = [];
-  for (let r=0; r<gameState.boardSize; r++) {
-    for (let c=0; c<gameState.boardSize; c++) {
-      if (gameState.grid[r][c] === '') {
-        emptyCells.push({row: r, col: c});
-      }
-    }
+// Update UI status
+function updateStatus() {
+  if (game.turnState === 'RPS') {
+    statusDiv.textContent = `${game.currentPlayer}'s RPS: Choose your move`;
+  } else {
+    statusDiv.textContent = `${game.currentPlayer}'s turn to place`;
   }
-  if (emptyCells.length === 0) return;
-  const choice = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-  makeMove(choice.row, choice.col);
-  gameState.aiThinking = false;
-  updateStatus();
 }
+
+// Show/hide RPS choices
+function showRPSChoices() {
+  document.getElementById('rpsChoices').style.display = 'flex';
+}
+function hideRPSChoices() {
+  document.getElementById('rpsChoices').style.display = 'none';
+}
+
+// Initialize game
+startBtn.onclick = () => {
+  game.mode = 'player'; // or 'vsAI'
+  startGame();
+};
 
 // Start game
-initBoard();
+function startGame() {
+  initGrid();
+  game.currentPlayer = 'X';
+  game.gameActive = true;
+  game.turnState = 'RPS';
+  game.winnerOfRPS = null;
+  game.lastMove = null;
+  // Choose who starts
+  // For demo, always X starts
+  document.getElementById('status').textContent = "Click 'Start Game' to begin";
+  hideRPSChoices();
+  draw();
+}
+
+// Draw function
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // draw grid and pieces
+  // (see above functions)
+  // For brevity, calling the same draw code
+  // You can extract draw code into a function for better structure
+  // For now, call the existing draw code in the script above
+  // (Note: in actual implementation, you would modularize better)
+  // Here, just call draw() again
+  // But for clarity, you should modularize code
+}
+
+// Initialize the game on page load
+startGame();
 
 </script>
 </body>

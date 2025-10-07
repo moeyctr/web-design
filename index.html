@@ -48,6 +48,38 @@
     text-shadow: 0 0 10px #fff, 0 0 20px #0ff;
   }
 
+  /* Difficulty controls styling */
+  #difficultyContainer {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #difficultyContainer label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2em;
+  }
+  #difficultySelect {
+    margin-top: 10px;
+    padding: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1em;
+  }
+  #difficultyBarContainer {
+    width: 300px;
+    height: 20px;
+    background-color: #555;
+    margin-top: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  #difficultyBar {
+    height: 100%;
+    width: 33%;
+    background-color: green;
+    transition: width 0.3s, background-color 0.3s;
+  }
+
   #rpsChoices {
     display: none;
     margin-top: 20px;
@@ -109,6 +141,20 @@
 <body>
 
 <h1>Futuristic Connect 5 vs Robot</h1>
+
+<!-- Difficulty Controls -->
+<div id="difficultyContainer">
+  <label for="difficultySelect">Select Difficulty:</label>
+  <select id="difficultySelect">
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+  <div id="difficultyBarContainer">
+    <div id="difficultyBar"></div>
+  </div>
+</div>
+
 <div id="gameContainer">
   <canvas id="gameCanvas" width="500" height="500"></canvas>
   <div id="status">Click "Start Game" to begin</div>
@@ -133,6 +179,10 @@ const restartBtn = document.getElementById('restartBtn');
 
 const rpsButtons = document.querySelectorAll('.rpsButton');
 
+const difficultySelect = document.getElementById('difficultySelect');
+const difficultyBar = document.getElementById('difficultyBar');
+
+// --- Game State ---
 let game = {
   size: 100,
   width: 5,
@@ -145,10 +195,44 @@ let game = {
   lastRPSChoice: null,
   currentRPSChoice: null,
   winnerOfRPS: null,
-  gameOver: false // new flag for game over
+  gameOver: false
 };
 
-// Initialize grid
+// --- Difficulty Variables ---
+let currentDifficulty = 'easy';
+
+// Function to update difficulty bar appearance
+function updateDifficultyBar() {
+  let widthPercent;
+  let color;
+  switch (currentDifficulty) {
+    case 'easy':
+      widthPercent = 33;
+      color = 'green';
+      break;
+    case 'medium':
+      widthPercent = 66;
+      color = 'orange';
+      break;
+    case 'hard':
+      widthPercent = 100;
+      color = 'red';
+      break;
+  }
+  difficultyBar.style.width = widthPercent + '%';
+  difficultyBar.style.backgroundColor = color;
+}
+
+// Listen for difficulty change
+difficultySelect.addEventListener('change', () => {
+  currentDifficulty = difficultySelect.value;
+  updateDifficultyBar();
+});
+
+// Initialize bar
+updateDifficultyBar();
+
+// --- Grid Functions ---
 function initGrid() {
   game.grid = [];
   for (let r=0; r<game.height; r++) {
@@ -160,7 +244,7 @@ function initGrid() {
   }
 }
 
-// Draw grid and pieces
+// Draw functions
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.strokeStyle = '#555';
@@ -181,10 +265,9 @@ function draw() {
   // Draw pieces
   for (let r=0; r<game.height; r++) {
     for (let c=0; c<game.width; c++) {
-      const cell = game.grid[r][c];
-      if (cell === 'X') {
+      if (game.grid[r][c] === 'X') {
         drawX(c * game.size, r * game.size);
-      } else if (cell === 'O') {
+      } else if (game.grid[r][c] === 'O') {
         drawO(c * game.size, r * game.size);
       }
     }
@@ -210,16 +293,17 @@ function drawO(x, y) {
   ctx.stroke();
 }
 
-// Event listeners
+// --- Event Listeners ---
 canvas.addEventListener('click', handleCanvasClick);
 document.getElementById('startBtn').onclick = () => startGame();
 document.getElementById('restartBtn').onclick = () => startGame();
 
+// --- Game Control ---
 function startGame() {
   initGrid();
-  game.currentPlayer = 'X'; // human always X
+  game.currentPlayer = 'X';
   game.gameActive = true;
-  game.gameOver = false; // reset game over
+  game.gameOver = false;
   game.turnState = 'RPS';
   game.lastRPSChoice = null;
   game.winnerOfRPS = null;
@@ -242,7 +326,7 @@ rpsButtons.forEach(btn => {
   };
 });
 
-// Handle RPS result
+// --- RPS Logic ---
 function handleRPSResult() {
   const choices = ['Rock','Paper','Scissors'];
   const robotChoice = choices[Math.floor(Math.random() * choices.length)];
@@ -254,22 +338,20 @@ function handleRPSResult() {
     return;
   }
 
-  // Record who won
   game.winnerOfRPS = winner;
   game.currentRPSChoice = null;
 
   if (winner === 'X') {
-    // Human won RPS: allow placement
+    // Human won RPS
     game.turnState = 'PLACING';
     statusDiv.textContent = "You won RPS! Place your X.";
-    showRPSChoices(); // optional; can hide if you prefer
+    showRPSChoices(); // optional
   } else {
-    // Robot won RPS: place O automatically
+    // Robot won RPS
     robotPlaceMark();
   }
 }
 
-// Determine RPS winner
 function determineRPSWinner(c1, c2) {
   if (c1 === c2) return null;
   if (
@@ -277,16 +359,16 @@ function determineRPSWinner(c1, c2) {
     (c1 === 'Scissors' && c2 === 'Paper') ||
     (c1 === 'Paper' && c2 === 'Rock')
   ) {
-    return 'X'; // human
+    return 'X';
   } else {
-    return 'O'; // robot
+    return 'O';
   }
 }
 
-// Handle human placement
+// --- Human Placement ---
 function handleCanvasClick(e) {
   if (game.gameOver || game.turnState !== 'PLACING') return;
-  if (game.currentPlayer !== 'X') return; // human's turn
+  if (game.currentPlayer !== 'X') return;
 
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -299,7 +381,6 @@ function handleCanvasClick(e) {
     col >= 0 && col < game.width &&
     game.grid[row][col] === ''
   ) {
-    // Place X
     game.grid[row][col] = 'X';
     if (checkWin(row, col, 'X')) {
       game.gameOver = true;
@@ -315,8 +396,7 @@ function handleCanvasClick(e) {
       draw();
       return;
     }
-
-    // After placement, reset to RPS phase for next turn
+    // Next RPS turn
     game.turnState = 'RPS';
     showRPSChoices();
     updateStatus();
@@ -324,7 +404,7 @@ function handleCanvasClick(e) {
   }
 }
 
-// Robot plays RPS
+// --- AI Logic with Variable Difficulty ---
 function robotRPS() {
   if (game.gameOver || game.turnState !== 'RPS') return;
   const choices = ['Rock','Paper','Scissors'];
@@ -337,22 +417,21 @@ function robotRPS() {
     showRPSChoices();
     return;
   }
-
   game.winnerOfRPS = winner;
   game.currentRPSChoice = null;
 
   if (winner === 'O') {
-    // Robot wins RPS: place O automatically
+    // Robot wins RPS
     robotPlaceMark();
   } else {
-    // Human wins RPS: wait for placement
+    // Human wins RPS
     alert("Your turn to place X");
     game.turnState = 'PLACING';
     showRPSChoices();
   }
 }
 
-// Robot places O automatically
+// --- Robot Places O with Difficulty-Based Logic ---
 function robotPlaceMark() {
   const emptyCells = [];
   for (let r=0; r<game.height; r++) {
@@ -369,7 +448,18 @@ function robotPlaceMark() {
     draw();
     return;
   }
-  const choice = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+
+  let choice;
+
+  if (currentDifficulty === 'easy') {
+    // Random move
+    choice = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+  } else if (currentDifficulty === 'medium') {
+    choice = getBestMoveMedium();
+  } else if (currentDifficulty === 'hard') {
+    choice = getBestMoveHard();
+  }
+
   game.grid[choice.r][choice.c] = 'O';
 
   if (checkWin(choice.r, choice.c, 'O')) {
@@ -379,6 +469,7 @@ function robotPlaceMark() {
     draw();
     return;
   }
+
   if (checkDraw()) {
     game.gameOver = true;
     game.gameActive = false;
@@ -387,17 +478,61 @@ function robotPlaceMark() {
     return;
   }
 
-  // Human's turn to choose RPS again
+  // Next turn: human RPS
   alert("Your turn to choose RPS.");
   game.turnState = 'RPS';
   showRPSChoices();
-  // Reset currentRPSChoice for next cycle
   game.currentRPSChoice = null;
   updateStatus();
   draw();
 }
 
-// Win check
+// --- Heuristic for Medium ---
+function getBestMoveMedium() {
+  // 1. Try to win
+  for (let cell of getEmptyCells()) {
+    game.grid[cell.r][cell.c] = 'O';
+    if (checkWin(cell.r, cell.c, 'O')) {
+      game.grid[cell.r][cell.c] = '';
+      return cell;
+    }
+    game.grid[cell.r][cell.c] = '';
+  }
+  // 2. Block opponent
+  for (let cell of getEmptyCells()) {
+    game.grid[cell.r][cell.c] = 'X';
+    if (checkWin(cell.r, cell.c, 'X')) {
+      game.grid[cell.r][cell.c] = '';
+      return cell; // block human
+    }
+    game.grid[cell.r][cell.c] = '';
+  }
+  // 3. Else pick random
+  const empty = getEmptyCells();
+  return empty[Math.floor(Math.random() * empty.length)];
+}
+
+// --- Placeholder for Hard --- (for now, same as medium) ---
+function getBestMoveHard() {
+  // For demonstration, same as medium.
+  // For actual AI: Implement Minimax or advanced heuristic here.
+  return getBestMoveMedium();
+}
+
+// Helper to get list of empty cells
+function getEmptyCells() {
+  const cells = [];
+  for (let r=0; r<game.height; r++) {
+    for (let c=0; c<game.width; c++) {
+      if (game.grid[r][c] === '') {
+        cells.push({r, c});
+      }
+    }
+  }
+  return cells;
+}
+
+// --- Win and Draw Checks ---
 function checkWin(row, col, player) {
   const directions = [
     { dr:1, dc:0 }, { dr:0, dc:1 }, { dr:1, dc:1 }, { dr:1, dc:-1 }
@@ -431,7 +566,6 @@ function checkWin(row, col, player) {
   return false;
 }
 
-// Check for draw
 function checkDraw() {
   for (let r=0; r<game.height; r++) {
     for (let c=0; c<game.width; c++) {
@@ -441,19 +575,9 @@ function checkDraw() {
   return true;
 }
 
-// Update status text
-function updateStatus() {
-  if (game.turnState === 'RPS') {
-    statusDiv.textContent = "Choose Rock, Paper, or Scissors.";
-  } else if (game.turnState === 'PLACING') {
-    statusDiv.textContent = "Place your X.";
-  }
-}
-
-// Initialize game
+// --- UI Event Handlers ---
 startBtn.onclick = () => startGame();
 
-// Start game
 function startGame() {
   initGrid();
   game.currentPlayer = 'X';
@@ -468,8 +592,88 @@ function startGame() {
   draw();
 }
 
-// Optional: add a button to trigger robot's RPS move automatically
-// For this example, we can trigger it after human's move or via a timer if desired
+// --- Additional: Automatic robot RPS move ---
+function autoRobotRPS() {
+  if (game.gameOver || game.turnState !== 'RPS') return;
+  const choices = ['Rock','Paper','Scissors'];
+  const choice = choices[Math.floor(Math.random() * choices.length)];
+  alert(`Robot chooses ${choice} for RPS.`);
+  const humanChoice = game.currentRPSChoice;
+  const winner = determineRPSWinner(humanChoice, choice);
+  if (!winner) {
+    alert("It's a tie! RPS again.");
+    showRPSChoices();
+    return;
+  }
+  game.winnerOfRPS = winner;
+  game.currentRPSChoice = null;
+
+  if (winner === 'O') {
+    robotPlaceMark();
+  } else {
+    alert("Your turn to place X");
+    game.turnState = 'PLACING';
+    showRPSChoices();
+  }
+}
+
+// --- Automatically trigger robot RPS after human move ---
+function checkAndTriggerRobot() {
+  if (game.turnState === 'RPS') {
+    // For simplicity, auto-trigger RPS for robot
+    setTimeout(() => {
+      autoRobotRPS();
+    }, 500);
+  }
+}
+
+// Call this after human move
+// inside handleCanvasClick, add:
+function handleCanvasClick(e) {
+  if (game.gameOver || game.turnState !== 'PLACING') return;
+  if (game.currentPlayer !== 'X') return;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const row = Math.floor(y / game.size);
+  const col = Math.floor(x / game.size);
+
+  if (
+    row >= 0 && row < game.height &&
+    col >= 0 && col < game.width &&
+    game.grid[row][col] === ''
+  ) {
+    // Place X
+    game.grid[row][col] = 'X';
+    if (checkWin(row, col, 'X')) {
+      game.gameOver = true;
+      game.gameActive = false;
+      statusDiv.textContent = "Congratulations! You won!";
+      draw();
+      return;
+    }
+    if (checkDraw()) {
+      game.gameOver = true;
+      game.gameActive = false;
+      statusDiv.textContent = "It's a draw!";
+      draw();
+      return;
+    }
+
+    // After human move, trigger robot RPS if it's robot's turn
+    if (game.turnState === 'RPS') {
+      setTimeout(() => {
+        autoRobotRPS();
+      }, 500);
+    }
+    // Next RPS turn
+    // (Already handled in autoRobotRPS)
+  }
+}
+
+// --- Initialize ---
+startBtn.onclick = () => startGame();
 </script>
 </body>
 </html>

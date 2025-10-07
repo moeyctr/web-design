@@ -335,14 +335,24 @@ function isBoardFull() {
 }
 
 // --- RPS Logic ---
+
+// The robot's RPS choice is always random, unaffected by difficulty
+function robotChooseRPS() {
+  const choices = ['Rock', 'Paper', 'Scissors'];
+  return choices[Math.floor(Math.random() * 3)];
+}
+
+// Show RPS buttons immediately whenever called
 function showRPSChoices() {
   rpsDiv.style.display = 'flex';
 }
 
+// Hide RPS buttons
 function hideRPSChoices() {
   rpsDiv.style.display = 'none';
 }
 
+// Determine RPS winner
 function getRPSWinner(humanChoice, robotChoice) {
   if (humanChoice === robotChoice) return 'tie';
   if (
@@ -353,61 +363,27 @@ function getRPSWinner(humanChoice, robotChoice) {
   return 'O'; // robot wins
 }
 
-function robotChooseRPS() {
-  // Difficulty affects robot choice randomness
-  if (currentDifficulty === 'easy') {
-    // random choice
-    const choices = ['Rock','Paper','Scissors'];
-    return choices[Math.floor(Math.random()*3)];
-  } else if (currentDifficulty === 'medium') {
-    // 50% chance to choose winning RPS against human last choice
-    if (!game.currentRPSChoice) {
-      // no human choice yet, random
-      const choices = ['Rock','Paper','Scissors'];
-      return choices[Math.floor(Math.random()*3)];
-    }
-    const human = game.currentRPSChoice;
-    const counter = {
-      Rock: 'Paper',
-      Paper: 'Scissors',
-      Scissors: 'Rock'
-    };
-    return Math.random() < 0.5 ? counter[human] : ['Rock','Paper','Scissors'][Math.floor(Math.random()*3)];
-  } else {
-    // hard: always pick winning choice vs human
-    if (!game.currentRPSChoice) {
-      const choices = ['Rock','Paper','Scissors'];
-      return choices[Math.floor(Math.random()*3)];
-    }
-    const human = game.currentRPSChoice;
-    const counter = {
-      Rock: 'Paper',
-      Paper: 'Scissors',
-      Scissors: 'Rock'
-    };
-    return counter[human];
-  }
-}
-
+// --- RPS result handling ---
 function handleRPSResult() {
   const human = game.currentRPSChoice;
-  const robot = robotChooseRPS();
+  const robot = robotChooseRPS(); // Always random, unaffected by difficulty
   statusDiv.textContent = `Robot chose ${robot}. `;
+
   const winner = getRPSWinner(human, robot);
 
   if (winner === 'tie') {
     statusDiv.textContent += "It's a tie! Choose again.";
-    showRPSChoices();
+    showRPSChoices(); // always immediately available
     return;
   }
 
   if (winner === 'X') {
-    // Human won RPS
+    // Human wins RPS
     game.turnState = 'PLACING';
     statusDiv.textContent += "You won RPS! Place your X.";
-    hideRPSChoices(); // <-- HIDE buttons now
+    hideRPSChoices(); // hide during placement
   } else {
-    // Robot won RPS, robot places O
+    // Robot wins RPS
     game.turnState = 'WAITING';
     hideRPSChoices();
     robotPlaceMark();
@@ -437,10 +413,10 @@ function placeMark(r, c, player) {
   return false;
 }
 
-// --- Robot placing ---
+// --- Robot placing logic ---
 function robotPlaceMark() {
   if (game.gameOver) return;
-  // Simple AI: pick random empty cell
+  // Adjust AI move based on difficulty
   const empties = [];
   for (let r=0; r<game.height; r++) {
     for (let c=0; c<game.width; c++) {
@@ -451,20 +427,19 @@ function robotPlaceMark() {
   let choice;
 
   if (currentDifficulty === 'easy') {
-    choice = empties[Math.floor(Math.random()*empties.length)];
+    choice = empties[Math.floor(Math.random() * empties.length)];
   } else if (currentDifficulty === 'medium') {
-    // 50% chance random, 50% chance pick first empty for "smarter"
     if (Math.random() < 0.5) {
-      choice = empties[Math.floor(Math.random()*empties.length)];
+      choice = empties[Math.floor(Math.random() * empties.length)];
     } else {
-      choice = empties[0];
+      choice = empties[0]; // smarter move
     }
   } else {
-    // Hard: always pick first empty (just as a simple smarter move)
+    // hard
     choice = empties[0];
   }
 
-  const placed = placeMark(choice[0], choice[1], 'O');
+  placeMark(choice[0], choice[1], 'O');
 
   if (!game.gameOver) {
     game.turnState = 'RPS';
@@ -530,7 +505,7 @@ function startGame() {
   restartBtn.disabled = true;
 }
 
-// --- Initial draw ---
+// --- Initialize ---
 initGrid();
 draw();
 statusDiv.textContent = 'Click "Start Game" to begin.';

@@ -488,11 +488,11 @@ document.getElementById('musicBtn').addEventListener('click', () => {
   if (!musicPlaying) {
     backgroundMusic.play();
     musicPlaying = true;
-    musicBtn.textContent = 'Music Off';
+    musicBtn.textContent = 'Music On';
   } else {
     backgroundMusic.pause();
     musicPlaying = false;
-    musicBtn.textContent = 'Music On';
+    musicBtn.textContent = 'Music Off';
   }
 });
 

@@ -134,6 +134,24 @@
     box-shadow: 0 0 30px #ff00cc, inset 0 0 15px #fff;
     transform: scale(1.05);
   }
+
+  /* Music toggle button style */
+  #musicBtn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 1.2em;
+    border-radius: 10px;
+    background: linear-gradient(45deg, #ffcc00, #ffaa00);
+    box-shadow: 0 0 20px #ffcc00, inset 0 0 10px #fff;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    transition: all 0.3s ease;
+  }
+  #musicBtn:hover {
+    box-shadow: 0 0 30px #ffcc00, inset 0 0 15px #fff;
+    transform: scale(1.05);
+  }
 </style>
 <!-- Load Orbitron font for a futuristic look -->
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
@@ -141,6 +159,9 @@
 <body>
 
 <h1>Futuristic Connect 5 vs Robot</h1>
+
+<!-- Music toggle button -->
+<button id="musicBtn">Music On</button>
 
 <!-- Difficulty Controls -->
 <div id="difficultyContainer">
@@ -169,6 +190,11 @@
   </div>
 </div>
 
+<!-- Background Music -->
+<audio id="backgroundMusic" loop>
+  <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg" />
+</audio>
+
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -181,6 +207,11 @@ const rpsButtons = document.querySelectorAll('.rpsButton');
 
 const difficultySelect = document.getElementById('difficultySelect');
 const difficultyBar = document.getElementById('difficultyBar');
+
+const musicBtn = document.getElementById('musicBtn');
+const backgroundMusic = document.getElementById('backgroundMusic');
+
+let musicPlaying = false;
 
 // --- Game State ---
 let game = {
@@ -295,14 +326,11 @@ function drawO(x, y) {
 
 // --- Game Logic ---
 function checkWin(r, c, player) {
-  // Check horizontal, vertical, diagonal \ and diagonal /
   const directions = [
     [0,1], [1,0], [1,1], [1,-1]
   ];
   for (const [dr, dc] of directions) {
     let count = 1;
-
-    // Check forward direction
     let rr = r + dr;
     let cc = c + dc;
     while (rr >= 0 && rr < game.height && cc >= 0 && cc < game.width && game.grid[rr][cc] === player) {
@@ -310,8 +338,6 @@ function checkWin(r, c, player) {
       rr += dr;
       cc += dc;
     }
-
-    // Check backward direction
     rr = r - dr;
     cc = c - dc;
     while (rr >= 0 && rr < game.height && cc >= 0 && cc < game.width && game.grid[rr][cc] === player) {
@@ -319,7 +345,6 @@ function checkWin(r, c, player) {
       rr -= dr;
       cc -= dc;
     }
-
     if (count >= game.connectToWin) return true;
   }
   return false;
@@ -335,62 +360,46 @@ function isBoardFull() {
 }
 
 // --- RPS Logic ---
-
-// The robot's RPS choice is always random, unaffected by difficulty
 function robotChooseRPS() {
   const choices = ['Rock', 'Paper', 'Scissors'];
   return choices[Math.floor(Math.random() * 3)];
 }
 
-// Show RPS buttons immediately whenever called
 function showRPSChoices() {
   rpsDiv.style.display = 'flex';
 }
-
-// Hide RPS buttons
 function hideRPSChoices() {
   rpsDiv.style.display = 'none';
 }
-
-// Determine RPS winner
 function getRPSWinner(humanChoice, robotChoice) {
   if (humanChoice === robotChoice) return 'tie';
   if (
     (humanChoice === 'Rock' && robotChoice === 'Scissors') ||
     (humanChoice === 'Paper' && robotChoice === 'Rock') ||
     (humanChoice === 'Scissors' && robotChoice === 'Paper')
-  ) return 'X'; // human wins
-  return 'O'; // robot wins
+  ) return 'X';
+  return 'O';
 }
-
-// --- RPS result handling ---
 function handleRPSResult() {
   const human = game.currentRPSChoice;
-  const robot = robotChooseRPS(); // Always random, unaffected by difficulty
+  const robot = robotChooseRPS();
   statusDiv.textContent = `Robot chose ${robot}. `;
-
   const winner = getRPSWinner(human, robot);
-
   if (winner === 'tie') {
     statusDiv.textContent += "It's a tie! Choose again.";
-    showRPSChoices(); // always immediately available
+    showRPSChoices();
     return;
   }
-
   if (winner === 'X') {
-    // Human wins RPS
     game.turnState = 'PLACING';
     statusDiv.textContent += "You won RPS! Place your X.";
-    hideRPSChoices(); // hide during placement
+    hideRPSChoices();
   } else {
-    // Robot wins RPS
     game.turnState = 'WAITING';
     hideRPSChoices();
     robotPlaceMark();
   }
 }
-
-// --- Place marks ---
 function placeMark(r, c, player) {
   if (game.grid[r][c] !== '') return false;
   game.grid[r][c] = player;
@@ -412,11 +421,8 @@ function placeMark(r, c, player) {
   }
   return false;
 }
-
-// --- Robot placing logic ---
 function robotPlaceMark() {
   if (game.gameOver) return;
-  // Adjust AI move based on difficulty
   const empties = [];
   for (let r=0; r<game.height; r++) {
     for (let c=0; c<game.width; c++) {
@@ -425,22 +431,18 @@ function robotPlaceMark() {
   }
   if (empties.length === 0) return;
   let choice;
-
   if (currentDifficulty === 'easy') {
     choice = empties[Math.floor(Math.random() * empties.length)];
   } else if (currentDifficulty === 'medium') {
     if (Math.random() < 0.5) {
       choice = empties[Math.floor(Math.random() * empties.length)];
     } else {
-      choice = empties[0]; // smarter move
+      choice = empties[0];
     }
   } else {
-    // hard
     choice = empties[0];
   }
-
   placeMark(choice[0], choice[1], 'O');
-
   if (!game.gameOver) {
     game.turnState = 'RPS';
     statusDiv.textContent = "Your turn to choose Rock, Paper, or Scissors.";
@@ -451,29 +453,21 @@ function robotPlaceMark() {
 
 // --- Event Listeners ---
 
-// Canvas click for placing 'X'
 canvas.addEventListener('click', (e) => {
   if (game.turnState !== 'PLACING' || game.gameOver) return;
-
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
-
   const col = Math.floor(x / game.size);
   const row = Math.floor(y / game.size);
-
   if (placeMark(row, col, 'X')) {
-    // If game ended, do nothing more
     return;
   }
-
-  // After placing X, switch to RPS again
   game.turnState = 'RPS';
   statusDiv.textContent = "Robot's turn to choose Rock, Paper, or Scissors.";
   showRPSChoices();
 });
 
-// RPS button clicks
 rpsButtons.forEach(btn => {
   btn.addEventListener('click', () => {
     if (game.turnState !== 'RPS' || game.gameOver) return;
@@ -483,14 +477,23 @@ rpsButtons.forEach(btn => {
   });
 });
 
-// Start button
 startBtn.addEventListener('click', () => {
   startGame();
 });
-
-// Restart button
 restartBtn.addEventListener('click', () => {
   startGame();
+});
+// --- Music toggle ---
+document.getElementById('musicBtn').addEventListener('click', () => {
+  if (!musicPlaying) {
+    backgroundMusic.play();
+    musicPlaying = true;
+    musicBtn.textContent = 'Music Off';
+  } else {
+    backgroundMusic.pause();
+    musicPlaying = false;
+    musicBtn.textContent = 'Music On';
+  }
 });
 
 // --- Start game function ---
@@ -511,7 +514,6 @@ draw();
 statusDiv.textContent = 'Click "Start Game" to begin.';
 hideRPSChoices();
 restartBtn.disabled = true;
-
 </script>
 
 </body>
